@@ -1,16 +1,8 @@
 (library
- (name notify_failures)
- (public_name notify_failures)
+ (name canary)
+ (public_name canary)
  (wrapped true)
- (libraries
-  lwt
-  lwt.unix
-  gitlab
-  ptime
-  cohttp
-  cohttp-lwt
-  cohttp-lwt-unix
-  yojson)
+ (libraries lwt lwt.unix ptime cohttp cohttp-lwt cohttp-lwt-unix yojson)
  (preprocess
   (pps
    lwt_ppx
@@ -18,3 +10,11 @@
    ppx_deriving.show
    ppx_deriving.eq
    ppx_deriving.ord)))
+
+(env
+ (dev
+  (flags
+   (:standard -w -g)))
+ (release
+  (flags
+   (:standard -w -g))))

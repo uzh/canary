@@ -1,13 +1,11 @@
 let ( let* ) = Lwt_result.bind
 
-module Notifier = struct
-  type t = exn -> string -> unit Lwt.t
+type 'a notifier = additional:string -> exn -> string -> ('a, string) Lwt_result.t
 
-  (**  *)
-  module type Extra = sig
-    type t
-    val to_string : t -> string
-    val from_string : string -> t
+module Notifier = struct
+  module type Notifier_s = sig
+    type notifier_rv
+    val notify : notifier_rv notifier
   end
 
   module type GitlabConf = sig
@@ -17,7 +15,7 @@ module Notifier = struct
     val project_id : int
   end
 
-  module Gitlab(Conf : GitlabConf) = struct
+  module Gitlab(Conf : GitlabConf) : Notifier_s with type notifier_rv := int = struct
     type gitlab_issue_api_repr =
       { description: string option
       ; id: int
@@ -62,12 +60,7 @@ module Notifier = struct
       in
       let uri =
         let uri = Uri.of_string (Conf.uri_base ^ resource) in
-        Uri.add_query_params' uri get_params
-      in
-      let%lwt () =
-        Lwt_io.printlf
-          "About to make call with headers: %s"
-          (String.concat "; " (Cohttp.Header.to_lines headers))
+        Uri.add_query_params uri get_params
       in
       let%lwt (resp, body) = meth ~headers uri in
       match resp.Cohttp_lwt.Response.status with
@@ -102,16 +95,15 @@ module Notifier = struct
         let search_in, search =
           match title, description with
           | Some title, None ->
-            Some "title", Some title
+            Some ["title"], Some [title]
           | None, Some description ->
-            Some "description", Some description
+            Some ["description"], Some [description]
           | Some title, Some description ->
-            Some "title,description", Some(title ^ " " ^ description)
+            Some ["title"; "description"], Some[title ^ " " ^ description]
           | None, None ->
             None, None
         in
-        [ Option.map (fun title -> "search", title) title
-        ; Option.map (fun iids -> "iids[]", iids) iids
+        [ Option.map (fun iids -> "iids[]", iids) iids
         ; Option.map (fun search -> "search", search) search
         ; Option.map (fun search_in -> "search_in", search_in) search_in
         ]
@@ -146,7 +138,7 @@ module Notifier = struct
         in
         make_post_call
           ~post_params:["description", description]
-          ~get_params:["title", title]
+          ~get_params:["title", [title]]
           ~resource
           ()
       in
@@ -165,24 +157,37 @@ module Notifier = struct
       let* _resp = make_post_call ~post_params:["body", body] ~resource () in
       Lwt.return_ok()
 
-    let make_gitlab_notifier ~additional =
-      fun exn trace ->
-        let* existing = get_gitlab_issues ~title:exn ~description:trace () in
-        let%lwt () = Lwt_io.printlf "Got %d existing issues." (List.length existing) in
-        let* iid =
-          match existing with
-          | [issue] ->
-            Lwt.return_ok issue.iid
-          | [] ->
-            create_gitlab_issue ~description:trace exn
-          | _ ->
-            Lwt.return_error "Multiple gitlab issues match this exception/description set."
-        in
-        let%lwt () = Lwt_io.printlf "Notifying on issue %d" iid in
-        comment_on_issue ~iid additional
+    (** [notify ~additional exn trace] notify an unhandled exception to GitLab.
+    
+    This reporter generates a digest of the exception message and trace. The
+    issue will be titled as
+    [textual representation of exception | first 10 characters of digest]. Each
+    time the notifier is called, it searches GitLab for an exception whose title
+    contains the first ten characters of the aforementioned digest. Each time
+    the exception is caught, the notifier will comment with the [additional]
+    information passed. *)
+    let notify ~additional exn trace =
+      let trace_md5 = String.sub Digest.(to_hex (string trace)) 0 10 in
+      let description = Printf.sprintf "```\n%s\n```" trace in
+      let exn = Printexc.to_string exn in
+      let* existing = get_gitlab_issues ~title:(trace_md5) () in
+      let title = exn ^ " | " ^ trace_md5 in
+      let* iid =
+        match existing with
+        | [issue] ->
+          Lwt.return_ok issue.iid
+        | [] ->
+          create_gitlab_issue ~description title
+        | _ ->
+          Lwt.return_error "Multiple gitlab issues match this exception/description set."
+      in
+      let* () = comment_on_issue ~iid additional in
+      Lwt.return_ok iid
   end
 end
 
+(** [handle ~notify f] executes the function [f], catching any exceptions and
+    passing those exceptions to [notify.] *)
 let handle ~notify (f: unit -> 'a Lwt.t) =
   Lwt.catch
     f

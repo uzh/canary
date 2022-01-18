@@ -3,3 +3,11 @@
  (libraries notify_failures lwt)
  (preprocess
   (pps lwt_ppx)))
+
+(env
+ (dev
+  (flags
+   (:standard -w -g)))
+ (release
+  (flags
+   (:standard -w -g))))
