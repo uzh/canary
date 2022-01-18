@@ -1,0 +1,20 @@
+(library
+ (name notify_failures)
+ (public_name notify_failures)
+ (wrapped true)
+ (libraries
+  lwt
+  lwt.unix
+  gitlab
+  ptime
+  cohttp
+  cohttp-lwt
+  cohttp-lwt-unix
+  yojson)
+ (preprocess
+  (pps
+   lwt_ppx
+   ppx_deriving_yojson
+   ppx_deriving.show
+   ppx_deriving.eq
+   ppx_deriving.ord)))
