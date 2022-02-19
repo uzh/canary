@@ -6,6 +6,11 @@
 
 (maintainers "John Christopher McAlpine <christophermcalpine@gmail.com>")
 
+(source
+ (github chrismamo1/canary))
+
+(authors "John Christopher McAlpine")
+
 (package
  (name "canary")
  (version "0.0.1")
