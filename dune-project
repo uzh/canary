@@ -15,6 +15,10 @@
   "Developed by the University of Zurich, Canary is a tool for capturing unhandled exceptions and automatically reporting them to your development team.")
  (depends
   dune
+  (ocaml
+   (and
+    (>= 4.08.0)
+    (< 4.13.0)))
   lwt
   ptime
   cohttp

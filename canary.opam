@@ -8,6 +8,7 @@ description:
 maintainer: ["John Christopher McAlpine <christophermcalpine@gmail.com>"]
 depends: [
   "dune" {>= "2.9"}
+  "ocaml" {>= "4.08.0" & < "4.13.0"}
   "lwt"
   "ptime"
   "cohttp"
