@@ -6,6 +6,7 @@
 
 (package
  (name "canary")
+ (version "0.0.1")
  (synopsis
   "Capture unhandled exceptions and automatically report them through various channels")
  (description
