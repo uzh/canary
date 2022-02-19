@@ -11,6 +11,8 @@
 
 (authors "John Christopher McAlpine")
 
+(license "MIT")
+
 (package
  (name "canary")
  (version "0.0.1")
