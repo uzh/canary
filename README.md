@@ -1,7 +1,8 @@
 # Canary
 
 Canary is a tool for automatically reporting runtime exceptions to issue
-trackers. It includes a generic interface for
+trackers. Developed by the University of Zurich for internal projects using
+OCaml.
 
 # Doctrine
 
