@@ -23,21 +23,7 @@ module Notifier = struct
       ; iid: int
       ; project_id: int
       }
-      [@@deriving yojson {strict = false},show]
-
-    module Issue_repr = struct
-      type issue_repr =
-        { exc: string
-        ; backtrace: string
-        ; git_hash: string option
-        }
-        [@@deriving eq]
-      let of_api_repr api_repr =
-        { exc = api_repr.title
-        ; backtrace = Option.value api_repr.description ~default:""
-        ; git_hash = None
-        }
-    end
+      [@@deriving yojson {strict = false}]
 
     let make_api_call
       ~(meth :
