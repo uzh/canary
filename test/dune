@@ -1,6 +1,6 @@
 (test
  (name main)
- (libraries notify_failures lwt)
+ (libraries canary lwt)
  (preprocess
   (pps lwt_ppx)))
 
