@@ -23,8 +23,7 @@
  (depends
   dune
   (ocaml
-   (and
-    (>= 4.08.0)))
+   (>= 4.08.0))
   lwt
   ptime
   cohttp
