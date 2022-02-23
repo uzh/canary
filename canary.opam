@@ -8,8 +8,8 @@ description:
 maintainer: ["John Christopher McAlpine <christophermcalpine@gmail.com>"]
 authors: ["John Christopher McAlpine"]
 license: "MIT"
-homepage: "https://github.com/chrismamo1/canary"
-bug-reports: "https://github.com/chrismamo1/canary/issues"
+homepage: "https://github.com/uzh/canary"
+bug-reports: "https://github.com/uzh/canary/issues"
 depends: [
   "dune" {>= "2.9"}
   "ocaml" {>= "4.08.0"}
@@ -39,4 +39,4 @@ build: [
   ]
   ["dune" "install" "-p" name "--create-install-files" name]
 ]
-dev-repo: "git+https://github.com/chrismamo1/canary.git"
+dev-repo: "git+https://github.com/uzh/canary.git"

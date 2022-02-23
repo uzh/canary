@@ -7,7 +7,7 @@
 (maintainers "John Christopher McAlpine <christophermcalpine@gmail.com>")
 
 (source
- (github chrismamo1/canary))
+ (github uzh/canary))
 
 (authors "John Christopher McAlpine")
 
