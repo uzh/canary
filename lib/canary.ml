@@ -8,6 +8,20 @@ module Notifier = struct
     val notify : notifier_rv notifier
   end
 
+  module type TextualConf = sig
+    val printer : string -> unit Lwt.t
+  end
+
+  (** Pass a textual representation of the exception to a specified handler.
+    This may be used in concert with a logging tool, or simply
+    [Lwt_io.printf]. *)
+  module Textual(Conf : TextualConf) : Notifier_s with type notifier_rv := unit = struct
+    let notify ~additional exn trace =
+      let text = Format.asprintf "Exception: %s\n(%s)\n%s\n" (Printexc.to_string exn) additional trace in
+      let%lwt () = Conf.printer text in
+      Lwt.return_ok()
+  end
+
   module type GitlabConf = sig
     val token : string
     val uri_base : string
@@ -15,6 +29,7 @@ module Notifier = struct
     val project_id : int
   end
 
+  (** Notify failures to a GitLab project in the form of issues. *)
   module Gitlab(Conf : GitlabConf) : Notifier_s with type notifier_rv := int = struct
     type gitlab_issue_api_repr =
       { description: string option
