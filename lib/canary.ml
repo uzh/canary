@@ -168,9 +168,9 @@ module Notifier = struct
     the exception is caught, the notifier will comment with the [additional]
     information passed. *)
     let notify ~additional exn trace =
-      let trace_md5 = String.sub Digest.(to_hex (string trace)) 0 10 in
-      let description = Printf.sprintf "```\n%s\n```" trace in
       let exn = Printexc.to_string exn in
+      let trace_md5 = String.sub Digest.(to_hex (string (exn ^ trace))) 0 10 in
+      let description = Printf.sprintf "```\n%s\n```" trace in
       let* existing = get_gitlab_issues ~title:(trace_md5) () in
       let title = exn ^ " | " ^ trace_md5 in
       let* iid =
