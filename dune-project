@@ -1,17 +1,27 @@
 (lang dune 2.9)
 
-(name canary)
-
 (generate_opam_files true)
 
-(maintainers "John Christopher McAlpine <christophermcalpine@gmail.com>")
+(name canary)
+
+(version 0.0.1)
+
+(license GPL-2.0-or-later)
+
+(authors
+ "Department of Economics, University of Zurich"
+ "John Christopher McAlpine")
+
+(maintainers "engineering@econ.uzh.ch")
 
 (source
  (github uzh/canary))
 
-(authors "John Christopher McAlpine")
+(homepage "https://github.com/uzh/canary")
 
-(license "MIT")
+(bug_reports "https://github.com/uzh/canary/issues")
+
+(documentation "https://github.com/uzh/canary")
 
 (package
  (name "canary")
