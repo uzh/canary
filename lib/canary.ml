@@ -111,6 +111,7 @@ module Notifier = struct
         |> List.filter Option.is_some
         |> List.map Option.get
       in
+      let get_params = get_params @ ["state", ["opened"]] in
       let* resp = make_get_call ~resource:"/issues" ~get_params () in
       let resp' = Yojson.Safe.from_string resp in
       let* rv =
@@ -133,7 +134,7 @@ module Notifier = struct
       Lwt.return_ok rv
 
     let create_gitlab_issue ~description title =
-      let* resp =
+       let* resp =
         let resource =
           Printf.sprintf "/projects/%d/issues" Conf.project_id
         in
@@ -159,21 +160,19 @@ module Notifier = struct
       Lwt.return_ok()
 
     (** [notify ~additional exn trace] notify an unhandled exception to GitLab.
-    
+
     This reporter generates a digest of the exception message and trace. The
     issue will be titled as
-    [textual representation of exception | first 10 characters of digest]. Each
+    [textual representation of exception | first 254 characters]. Each
     time the notifier is called, it searches GitLab for an exception whose title
     contains the first ten characters of the aforementioned digest. Each time
     the exception is caught, the notifier will comment with the [additional]
     information passed. *)
     let notify ~additional exn trace =
       let exn = Printexc.to_string exn in
-      let trace_md5 = String.sub Digest.(to_hex (string (exn ^ trace))) 0 10 in
+      let title = if String.length exn > 255 then String.sub exn 0 254 else exn in
       let description = Printf.sprintf "```\n%s\n```" trace in
-      let* existing = get_gitlab_issues ~title:(trace_md5) () in
-      let exn' = if String.length exn >= 15 then String.sub exn 0 14 ^ "..." else exn in
-      let title = exn' ^ " | " ^ trace_md5 in
+      let* existing = get_gitlab_issues ~title () in
       let* iid =
         match existing with
         | [issue] ->
