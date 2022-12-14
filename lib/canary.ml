@@ -163,17 +163,19 @@ module Notifier = struct
 
     This reporter generates a digest of the exception message and trace. The
     issue will be titled as
-    [textual representation of exception | first 255 characters]. Each
-    time the notifier is called, it searches GitLab for an exception whose title
-    contains the first ten characters of the aforementioned digest. Each time
-    the exception is caught, the notifier will comment with the [additional]
-    information passed. *)
+    [first 10 characters of digest | textual representation of exception]. With
+    a max length of 255 Each time the notifier is called, it searches GitLab
+    for an exception whose title contains the first ten characters of the
+    aforementioned digest. Each time the exception is caught, the notifier
+    will comment with the [additional] information passed. *)
     let notify ~additional exn trace =
       let title_max_length = 255 in
       let exn = Printexc.to_string exn in
-      let title = if String.length exn > title_max_length then String.sub exn 0 title_max_length else exn in
+      let trace_md5 = String.sub Digest.(to_hex (string (exn ^ trace))) 0 10 in
       let description = Printf.sprintf "```\n%s\n```" trace in
-      let* existing = get_gitlab_issues ~title () in
+      let* existing = get_gitlab_issues ~title:(trace_md5) () in
+      let title = trace_md5 ^ " | " ^ exn in
+      let title = if String.length title > title_max_length then String.sub title 0 title_max_length else title in
       let* iid =
         match existing with
         | [issue] ->
