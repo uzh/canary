@@ -65,7 +65,7 @@ module Notifier = struct
       =
       let headers =
         Cohttp.Header.of_list
-          (List.append
+          (CCList.append
              headers
              [ "content-type", "application/x-www-form-urlencoded"
              ; "PRIVATE_TOKEN", Conf.token
@@ -88,7 +88,7 @@ module Notifier = struct
     let make_post_call ~post_params =
       let post_body =
         let params =
-          List.map
+          CCList.map
             (fun (key, value) ->
               let enc = Uri.pct_encode ~component:`Generic in
               enc key ^ "=" ^ enc value)
@@ -120,12 +120,13 @@ module Notifier = struct
             Some [ "title"; "description" ], Some [ title ^ " " ^ description ]
           | None, None -> None, None
         in
-        [ Option.map (fun iids -> "iids[]", iids) iids
-        ; Option.map (fun search -> "search", search) search
-        ; Option.map (fun search_in -> "search_in", search_in) search_in
-        ]
-        |> List.filter Option.is_some
-        |> List.map Option.get
+        let test =
+          [ CCOption.map (fun iids -> "iids[]", iids) iids
+          ; CCOption.map (fun search -> "search", search) search
+          ; CCOption.map (fun search_in -> "search_in", search_in) search_in
+          ]
+        in
+        test |> CCList.map CCOption.to_list |> CCList.flatten
       in
       let get_params = get_params @ [ "state", [ "opened" ] ] in
       let* resp = make_get_call ~resource:"/issues" ~get_params () in
@@ -133,8 +134,8 @@ module Notifier = struct
       let* rv =
         match resp' with
         | `List ls ->
-          List.map gitlab_issue_api_repr_of_yojson ls
-          |> List.fold_left
+          CCList.map gitlab_issue_api_repr_of_yojson ls
+          |> CCList.fold_left
                (fun acc x ->
                  match acc, x with
                  | Ok acc', Ok x -> Ok (x :: acc')
@@ -154,7 +155,7 @@ module Notifier = struct
         | labels -> [ "labels", labels |> CCString.concat "," ]
       in
       let* resp =
-        let resource = Printf.sprintf "/projects/%d/issues" Conf.project_id in
+        let resource = Format.asprintf "/projects/%d/issues" Conf.project_id in
         make_post_call
           ~post_params:([ "description", description ] @ labels)
           ~get_params:[ "title", [ title ] ]
@@ -169,7 +170,7 @@ module Notifier = struct
 
     let comment_on_issue ~iid body =
       let resource =
-        Printf.sprintf "/projects/%d/issues/%d/notes" Conf.project_id iid
+        Format.asprintf "/projects/%d/issues/%d/notes" Conf.project_id iid
       in
       let* _resp = make_post_call ~post_params:[ "body", body ] ~resource () in
       Lwt.return_ok ()
@@ -178,8 +179,10 @@ module Notifier = struct
     let notify ?labels ~additional exn trace =
       let title_max_length = 255 in
       let exn = Printexc.to_string exn in
-      let trace_md5 = String.sub Digest.(to_hex (string (exn ^ trace))) 0 10 in
-      let description = Printf.sprintf "```\n%s\n```" trace in
+      let trace_md5 =
+        CCString.sub Digest.(to_hex (string (exn ^ trace))) 0 10
+      in
+      let description = Format.asprintf "```\n%s\n```" trace in
       let* existing = get_gitlab_issues ~title:trace_md5 () in
       let title = trace_md5 ^ " | " ^ exn in
       let title =
