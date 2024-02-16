@@ -16,14 +16,15 @@ bug-reports: "https://github.com/uzh/canary/issues"
 depends: [
   "dune" {>= "2.9"}
   "ocaml" {>= "4.08.0"}
-  "lwt"
-  "ptime"
   "cohttp"
   "cohttp-lwt"
   "cohttp-lwt-unix"
-  "yojson"
+  "containers"
+  "lwt"
   "lwt_ppx"
   "ppx_deriving_yojson"
+  "ptime"
+  "yojson"
   "odoc" {with-doc}
 ]
 build: [

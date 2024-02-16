@@ -34,11 +34,12 @@
   dune
   (ocaml
    (>= 4.08.0))
-  lwt
-  ptime
   cohttp
   cohttp-lwt
   cohttp-lwt-unix
-  yojson
+  containers
+  lwt
   lwt_ppx
-  ppx_deriving_yojson))
+  ppx_deriving_yojson
+  ptime
+  yojson))
