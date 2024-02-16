@@ -2,7 +2,15 @@
  (name canary)
  (public_name canary)
  (wrapped true)
- (libraries lwt lwt.unix ptime cohttp cohttp-lwt cohttp-lwt-unix yojson)
+ (libraries
+  containers
+  lwt
+  lwt.unix
+  ptime
+  cohttp
+  cohttp-lwt
+  cohttp-lwt-unix
+  yojson)
  (preprocess
   (pps
    lwt_ppx
