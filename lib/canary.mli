@@ -27,8 +27,8 @@ module Notifier : sig
 
   (** Notify failures to a GitLab project in the form of issues. *)
   module Gitlab : functor (_ : GitlabConf) -> sig
-    (** [notify ?labels ~additional exn trace] notify an unhandled exception to
-        GitLab.
+    (** [notify ?search_params ?labels ~additional exn trace] notify an
+        unhandled exception to GitLab.
 
         This reporter generates a digest of the exception message and trace. The
         issue will be titled as
@@ -37,7 +37,10 @@ module Notifier : sig
         GitLab for an exception whose title contains the first ten characters of
         the aforementioned digest. Each time the exception is caught, the
         notifier will comment with the [additional] information and add the
-        [labels] passed. *)
+        [labels] passed.
+
+        [search_params] is an optional to pass e.g. `("state", ["opened"])` to
+        only extend open issues*)
     val notify : int notifier
 
     val connection_test : unit -> (unit, string) Lwt_result.t
