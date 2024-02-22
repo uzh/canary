@@ -197,6 +197,16 @@ module Notifier = struct
       | _ -> Lwt.return_error "Invalid issue ID"
     ;;
 
+    let reopen_issue iid =
+      let resource =
+        Format.asprintf "/projects/%d/issues/%d" Conf.project_id iid
+      in
+      let meth = Cohttp_lwt_unix.Client.put ?body:None ?chunked:None in
+      let get_params = [ "state_event", [ "reopen" ] ] in
+      let* _resp = make_api_call ~meth ~resource ~get_params () in
+      Lwt.return_ok ()
+    ;;
+
     let comment_on_issue ~iid body =
       let resource =
         Format.asprintf "/projects/%d/issues/%d/notes" Conf.project_id iid
@@ -228,6 +238,7 @@ module Notifier = struct
             "Multiple gitlab issues match this exception/description set."
       in
       let* () = comment_on_issue ~iid additional in
+      let* () = reopen_issue iid in
       Lwt.return_ok iid
     ;;
 
