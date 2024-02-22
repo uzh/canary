@@ -1,5 +1,5 @@
 opam-version: "2.0"
-version: "0.0.2"
+version: "0.0.3"
 synopsis:
   "Capture unhandled exceptions and automatically report them through various channels"
 description:
@@ -33,6 +33,8 @@ depends: [
   "conduit-lwt-unix" {= "6.2.1"}
   "conf-gmp" {= "4"}
   "conf-gmp-powm-sec" {= "3"}
+  "conf-libssl" {= "4"}
+  "conf-pkg-config" {= "3"}
   "containers" {= "3.13.1"}
   "cppo" {= "1.6.9"}
   "csexp" {= "1.5.2"}
@@ -52,6 +54,7 @@ depends: [
   "logs" {= "0.7.0"}
   "lwt" {= "5.7.0"}
   "lwt_ppx" {= "2.1.0"}
+  "lwt_ssl" {= "1.2.0"}
   "macaddr" {= "5.5.0"}
   "magic-mime" {= "1.3.1"}
   "mirage-crypto" {= "0.11.2"}
@@ -79,6 +82,7 @@ depends: [
   "seq" {= "base"}
   "sexplib" {= "v0.14.0"}
   "sexplib0" {= "v0.14.0"}
+  "ssl" {= "0.7.0"}
   "stdlib-shims" {= "0.3.0"}
   "stringext" {= "1.6.0"}
   "topkg" {= "1.0.7"}
