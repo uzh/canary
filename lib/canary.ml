@@ -1,17 +1,32 @@
+open CCFun
+
 let ( let* ) = Lwt_result.bind
 
 type 'a notifier =
-  ?labels:string list
+  ?search_params:(string * string list) list
+  -> ?labels:string list
   -> additional:string
   -> exn
   -> string
   -> ('a, string) Lwt_result.t
+
+let flatten
+  :  ('a list, string) result -> 'a Ppx_deriving_yojson_runtime.error_or
+  -> ('a list, string) result
+  =
+  fun acc x ->
+  match acc, x with
+  | Ok acc', Ok x -> Ok (x :: acc')
+  | Error _, _ -> acc
+  | Ok _, Error x' -> Error x'
+;;
 
 module Notifier = struct
   module type Notifier_s = sig
     type notifier_rv
 
     val notify : notifier_rv notifier
+    val connection_test : unit -> (unit, string) Lwt_result.t
   end
 
   module type TextualConf = sig
@@ -20,7 +35,7 @@ module Notifier = struct
 
   module Textual (Conf : TextualConf) :
     Notifier_s with type notifier_rv := unit = struct
-    let notify ?labels:_ ~additional exn trace =
+    let notify ?search_params:_ ?labels:_ ~additional exn trace =
       let text =
         Format.asprintf
           "Exception: %s\n(%s)\n%s\n"
@@ -31,6 +46,8 @@ module Notifier = struct
       let%lwt () = Conf.printer text in
       Lwt.return_ok ()
     ;;
+
+    let connection_test = Lwt.return_ok
   end
 
   module type GitlabConf = sig
@@ -42,39 +59,58 @@ module Notifier = struct
 
   module Gitlab (Conf : GitlabConf) : Notifier_s with type notifier_rv := int =
   struct
+    type gitlab_token_api_repr =
+      { id : int
+      ; name : string
+      ; revoked : bool
+      ; created_at : string
+      ; scopes : string list
+      ; user_id : int
+      ; last_used_at : string
+      ; active : bool
+      ; expires_at : string
+      }
+    [@@deriving yojson { strict = false }]
+
     type gitlab_issue_api_repr =
       { description : string option
       ; id : int
       ; title : string
       ; iid : int
       ; project_id : int
-      ; label : string list
+      ; labels : string list
       }
     [@@deriving yojson { strict = false }]
 
     let make_api_call
-        ~(meth :
-           ?ctx:Cohttp_lwt_unix.Net.ctx
-           -> ?headers:Cohttp.Header.t
-           -> Uri.t
-           -> (Cohttp.Response.t * Cohttp_lwt.Body.t) Lwt.t)
-        ~resource
-        ?(get_params = [])
-        ?(headers = [])
-        ()
+      ~(meth :
+         ?ctx:Cohttp_lwt_unix.Net.ctx
+         -> ?headers:Cohttp.Header.t
+         -> Uri.t
+         -> (Cohttp.Response.t * Cohttp_lwt.Body.t) Lwt.t)
+      ~resource
+      ?(get_params = [])
+      ?(headers = [])
+      ()
       =
       let headers =
-        Cohttp.Header.of_list
-          (CCList.append
-             headers
-             [ "content-type", "application/x-www-form-urlencoded"
-             ; "PRIVATE_TOKEN", Conf.token
-             ])
+        headers
+        @ [ "content-type", "application/x-www-form-urlencoded"
+          ; "PRIVATE_TOKEN", Conf.token
+          ]
+        |> Cohttp.Header.of_list
       in
       let uri =
-        let uri = Uri.of_string (Conf.uri_base ^ resource) in
-        Uri.add_query_params uri get_params
+        Uri.of_string (Conf.uri_base ^ resource)
+        |> flip Uri.add_query_params get_params
       in
+      Logs.warn (fun m ->
+        m
+          "%s"
+          (Cohttp_lwt_unix.Request.pp_hum
+             Format.str_formatter
+             (Cohttp_lwt_unix.Request.make ~headers uri)
+           |> Format.flush_str_formatter));
       let%lwt resp, body = meth ~headers uri in
       match resp.Cohttp_lwt.Response.status with
       | x when Cohttp.Code.is_success (Cohttp.Code.code_of_status x) ->
@@ -94,7 +130,7 @@ module Notifier = struct
               enc key ^ "=" ^ enc value)
             post_params
         in
-        String.concat ";" params
+        CCString.concat ";" params
       in
       let meth =
         Cohttp_lwt_unix.Client.post
@@ -104,12 +140,9 @@ module Notifier = struct
       make_api_call ~meth
     ;;
 
-    let make_get_call ~get_params =
-      let meth = Cohttp_lwt_unix.Client.get in
-      make_api_call ~meth ~get_params
-    ;;
+    let make_get_call = make_api_call ~meth:Cohttp_lwt_unix.Client.get
 
-    let get_gitlab_issues ?title ?iids ?description () =
+    let get_gitlab_issues ?(search_params = []) ?title ?iids ?description () =
       let get_params =
         let search_in, search =
           match title, description with
@@ -128,21 +161,17 @@ module Notifier = struct
         in
         test |> CCList.map CCOption.to_list |> CCList.flatten
       in
-      let get_params = get_params @ [ "state", [ "opened" ] ] in
+      let get_params = get_params @ search_params in
       let* resp = make_get_call ~resource:"/issues" ~get_params () in
       let resp' = Yojson.Safe.from_string resp in
       let* rv =
         match resp' with
         | `List ls ->
-          CCList.map gitlab_issue_api_repr_of_yojson ls
-          |> CCList.fold_left
-               (fun acc x ->
-                 match acc, x with
-                 | Ok acc', Ok x -> Ok (x :: acc')
-                 | Error _, _ -> acc
-                 | Ok _, Error x' -> Error x')
-               (Ok [])
-          |> Lwt.return
+          let test =
+            CCList.map gitlab_issue_api_repr_of_yojson ls
+            |> CCList.fold_left flatten (Ok [])
+          in
+          test |> Lwt.return
         | _ -> Lwt.return_error "Retrieved value is not a list"
       in
       Lwt.return_ok rv
@@ -157,7 +186,7 @@ module Notifier = struct
       let* resp =
         let resource = Format.asprintf "/projects/%d/issues" Conf.project_id in
         make_post_call
-          ~post_params:([ "description", description ] @ labels)
+          ~post_params:(labels @ [ "description", description ])
           ~get_params:[ "title", [ title ] ]
           ~resource
           ()
@@ -176,14 +205,14 @@ module Notifier = struct
       Lwt.return_ok ()
     ;;
 
-    let notify ?labels ~additional exn trace =
+    let notify ?search_params ?labels ~additional exn trace =
       let title_max_length = 255 in
       let exn = Printexc.to_string exn in
       let trace_md5 =
         CCString.sub Digest.(to_hex (string (exn ^ trace))) 0 10
       in
       let description = Format.asprintf "```\n%s\n```" trace in
-      let* existing = get_gitlab_issues ~title:trace_md5 () in
+      let* existing = get_gitlab_issues ?search_params ~title:trace_md5 () in
       let title = trace_md5 ^ " | " ^ exn in
       let title =
         if String.length title > title_max_length
@@ -201,12 +230,22 @@ module Notifier = struct
       let* () = comment_on_issue ~iid additional in
       Lwt.return_ok iid
     ;;
+
+    let connection_test () : (unit, string) Lwt_result.t =
+      let* resp = make_get_call ~resource:"/personal_access_tokens/self" () in
+      resp
+      |> Yojson.Safe.from_string
+      |> gitlab_token_api_repr_of_yojson
+      |> CCResult.map (fun (_ : gitlab_token_api_repr) -> ())
+      |> CCResult.map_err (Format.asprintf "Canary connection: %s")
+      |> Lwt_result.lift
+    ;;
   end
 end
 
 let handle ~notify (f : unit -> 'a Lwt.t) =
   Lwt.catch f (fun exn ->
-      match%lwt notify (Printexc.to_string exn) (Printexc.get_backtrace ()) with
-      | Ok _ -> Lwt.return ()
-      | Error err -> Lwt_io.printlf "Error notifying exception: %s" err)
+    match%lwt notify (Printexc.to_string exn) (Printexc.get_backtrace ()) with
+    | Ok _ -> Lwt.return ()
+    | Error err -> Lwt_io.printlf "Error notifying exception: %s" err)
 ;;

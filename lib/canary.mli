@@ -1,5 +1,6 @@
 type 'a notifier =
-  ?labels:string list
+  ?search_params:(string * string list) list
+  -> ?labels:string list
   -> additional:string
   -> exn
   -> string
@@ -38,6 +39,8 @@ module Notifier : sig
         notifier will comment with the [additional] information and add the
         [labels] passed. *)
     val notify : int notifier
+
+    val connection_test : unit -> (unit, string) Lwt_result.t
   end
 end
 
