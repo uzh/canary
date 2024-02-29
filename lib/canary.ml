@@ -11,10 +11,10 @@ type 'a notifier =
   -> ('a, string) Lwt_result.t
 
 let flatten
-  :  ('a list, string) result -> 'a Ppx_deriving_yojson_runtime.error_or
-  -> ('a list, string) result
+    :  ('a list, string) result -> 'a Ppx_deriving_yojson_runtime.error_or
+    -> ('a list, string) result
   =
-  fun acc x ->
+ fun acc x ->
   match acc, x with
   | Ok acc', Ok x -> Ok (x :: acc')
   | Error _, _ -> acc
@@ -83,15 +83,15 @@ module Notifier = struct
     [@@deriving yojson { strict = false }]
 
     let make_api_call
-      ~(meth :
-         ?ctx:Cohttp_lwt_unix.Net.ctx
-         -> ?headers:Cohttp.Header.t
-         -> Uri.t
-         -> (Cohttp.Response.t * Cohttp_lwt.Body.t) Lwt.t)
-      ~resource
-      ?(get_params = [])
-      ?(headers = [])
-      ()
+        ~(meth :
+           ?ctx:Cohttp_lwt_unix.Net.ctx
+           -> ?headers:Cohttp.Header.t
+           -> Uri.t
+           -> (Cohttp.Response.t * Cohttp_lwt.Body.t) Lwt.t)
+        ~resource
+        ?(get_params = [])
+        ?(headers = [])
+        ()
       =
       let headers =
         headers
@@ -104,13 +104,6 @@ module Notifier = struct
         Uri.of_string (Conf.uri_base ^ resource)
         |> flip Uri.add_query_params get_params
       in
-      Logs.warn (fun m ->
-        m
-          "%s"
-          (Cohttp_lwt_unix.Request.pp_hum
-             Format.str_formatter
-             (Cohttp_lwt_unix.Request.make ~headers uri)
-           |> Format.flush_str_formatter));
       let%lwt resp, body = meth ~headers uri in
       match resp.Cohttp_lwt.Response.status with
       | x when Cohttp.Code.is_success (Cohttp.Code.code_of_status x) ->
@@ -262,7 +255,7 @@ end
 
 let handle ~notify (f : unit -> 'a Lwt.t) =
   Lwt.catch f (fun exn ->
-    match%lwt notify (Printexc.to_string exn) (Printexc.get_backtrace ()) with
-    | Ok _ -> Lwt.return ()
-    | Error err -> Lwt_io.printlf "Error notifying exception: %s" err)
+      match%lwt notify (Printexc.to_string exn) (Printexc.get_backtrace ()) with
+      | Ok _ -> Lwt.return ()
+      | Error err -> Lwt_io.printlf "Error notifying exception: %s" err)
 ;;
