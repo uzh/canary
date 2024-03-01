@@ -170,16 +170,11 @@ module Notifier = struct
       Lwt.return_ok rv
     ;;
 
-    let create_gitlab_issue ?(labels = []) ~description title =
-      let labels =
-        match labels with
-        | [] -> []
-        | labels -> [ "labels", labels |> CCString.concat "," ]
-      in
+    let create_gitlab_issue ~description title =
       let* resp =
         let resource = Format.asprintf "/projects/%d/issues" Conf.project_id in
         make_post_call
-          ~post_params:(labels @ [ "description", description ])
+          ~post_params:[ "description", description ]
           ~get_params:[ "title", [ title ] ]
           ~resource
           ()
@@ -188,6 +183,19 @@ module Notifier = struct
       match Yojson.Safe.Util.member "iid" resp' with
       | `Int x -> Lwt.return_ok x
       | _ -> Lwt.return_error "Invalid issue ID"
+    ;;
+
+    let add_labels iid labels =
+      let resource =
+        Format.asprintf "/projects/%d/issues/%d" Conf.project_id iid
+      in
+      let meth = Cohttp_lwt_unix.Client.put ?body:None ?chunked:None in
+      let get_params = [ "add_labels", labels ] in
+      if CCList.is_empty labels |> not
+      then
+        let* (_ : string) = make_api_call ~meth ~resource ~get_params () in
+        Lwt.return_ok ()
+      else Lwt.return_ok ()
     ;;
 
     let reopen_issue ?(with_labels = []) iid =
@@ -224,20 +232,23 @@ module Notifier = struct
       let* existing = get_gitlab_issues ?search_params ~title:trace_md5 () in
       let title = trace_md5 ^ " | " ^ exn in
       let title =
-        if String.length title > title_max_length
-        then String.sub title 0 title_max_length
+        if CCString.length title > title_max_length
+        then CCString.sub title 0 title_max_length
         else title
       in
       let* iid =
         match existing with
         | [ issue ] -> Lwt.return_ok issue.iid
-        | [] -> create_gitlab_issue ?labels ~description title
+        | [] -> create_gitlab_issue ~description title
         | _ ->
           Lwt.return_error
             "Multiple gitlab issues match this exception/description set."
       in
       let* () = comment_on_issue ~iid additional in
       let* () = reopen_issue ?with_labels:labels iid in
+      let* () =
+        labels |> CCOption.map_or ~default:(Lwt.return_ok ()) (add_labels iid)
+      in
       Lwt.return_ok iid
     ;;
 
