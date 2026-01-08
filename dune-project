@@ -4,7 +4,7 @@
 
 (name canary)
 
-(version 0.0.3)
+(version 0.0.4)
 
 (license GPL-2.0-or-later)
 
