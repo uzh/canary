@@ -25,7 +25,7 @@ let load_dotenv () =
 ;;
 
 let test_issue_create () =
-  let exn = "TESTING ERROR" in
+  let exn_msg = "Testing exception for Gitlab issue creation" in
   let () = load_dotenv () in
   let module Gitlab_notify =
     Canary.Notifier.Gitlab (struct
@@ -35,11 +35,19 @@ let test_issue_create () =
       let project_id = int_of_string (Sys.getenv "GITLAB_PROJECT_ID")
     end)
   in
+  Printexc.record_backtrace true;
+  let backtrace =
+    try
+      (* Raise and catch a test exception to populate the backtrace *)
+      raise (Failure exn_msg)
+    with
+    | Failure _ -> Printexc.get_backtrace ()
+  in
   Gitlab_notify.notify
     ~labels:[ "bug"; "exception" ]
     ~additional:"some testing additionals"
-    (Failure exn)
-    (Printexc.get_backtrace ())
+    (Failure exn_msg)
+    backtrace
   |> Lwt.map CCResult.get_or_failwith
 ;;
 

@@ -4,7 +4,7 @@ Canary is a tool for automatically reporting runtime exceptions to issue
 trackers. Developed by the University of Zurich for internal projects using
 OCaml.
 
-# Doctrine
+## Doctrine
 
 When using OCaml, one should almost always use error-aware return types such as
 `option` or `result` to help structure application in such a way that any
