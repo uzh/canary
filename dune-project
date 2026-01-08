@@ -31,6 +31,7 @@
   "Developed by the University of Zurich, Canary is a tool for capturing unhandled exceptions and automatically reporting them to your development team.")
  (depends
   dune
+  (dune-release :with-dev-setup)
   (ocaml
    (>= 4.08.0))
   cohttp
@@ -39,6 +40,16 @@
   containers
   lwt
   lwt_ppx
+  (ocamlformat :with-dev-setup)
+  (ocaml-lsp-server :with-dev-setup)
   ppx_deriving_yojson
   ptime
+  (ssl
+   (and
+    (>= 0.7.0)
+    :with-test))
+  (lwt_ssl
+   (and
+    (>= 1.2.0)
+    :with-test))
   yojson))

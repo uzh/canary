@@ -105,7 +105,7 @@ module Notifier = struct
         |> flip Uri.add_query_params get_params
       in
       let%lwt resp, body = meth ~headers uri in
-      match resp.Cohttp_lwt.Response.status with
+      match resp.Cohttp.Response.status with
       | x when Cohttp.Code.is_success (Cohttp.Code.code_of_status x) ->
         let%lwt body' = Cohttp_lwt.Body.to_string body in
         Lwt.return_ok body'
