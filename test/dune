@@ -1,6 +1,6 @@
-(test
- (name main)
- (libraries canary lwt)
+(tests
+ (names main)
+ (libraries canary lwt ssl)
  (preprocess
   (pps lwt_ppx)))
 

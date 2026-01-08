@@ -15,6 +15,7 @@ doc: "https://github.com/uzh/canary"
 bug-reports: "https://github.com/uzh/canary/issues"
 depends: [
   "dune" {>= "2.9"}
+  "dune-release" {with-dev-setup}
   "ocaml" {>= "4.08.0"}
   "cohttp"
   "cohttp-lwt"
@@ -22,8 +23,12 @@ depends: [
   "containers"
   "lwt"
   "lwt_ppx"
+  "ocamlformat" {with-dev-setup}
+  "ocaml-lsp-server" {with-dev-setup}
   "ppx_deriving_yojson"
   "ptime"
+  "ssl" {>= "0.7.0" & with-test}
+  "lwt_ssl" {>= "1.2.0" & with-test}
   "yojson"
   "odoc" {with-doc}
 ]
