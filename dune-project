@@ -39,7 +39,8 @@
   cohttp-lwt-unix
   containers
   lwt
-  lwt_ppx
+  (lwt_ppx
+   (>= 2.1.0))
   (ocamlformat :with-dev-setup)
   (ocaml-lsp-server :with-dev-setup)
   ppx_deriving_yojson

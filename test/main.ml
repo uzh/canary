@@ -24,31 +24,53 @@ let load_dotenv () =
       Unix.putenv key value)
 ;;
 
+let getenv_nonempty name =
+  match Sys.getenv_opt name with
+  | Some value when CCString.trim value <> "" -> Some value
+  | _ -> None
+;;
+
 let test_issue_create () =
   let exn_msg = "Testing exception for Gitlab issue creation" in
   let () = load_dotenv () in
-  let module Gitlab_notify =
-    Canary.Notifier.Gitlab (struct
-      let token = Sys.getenv "GITLAB_TOKEN"
-      let uri_base = Sys.getenv "GITLAB_API_BASE"
-      let project_name = Sys.getenv "GITLAB_PROJECT_NAME"
-      let project_id = int_of_string (Sys.getenv "GITLAB_PROJECT_ID")
-    end)
-  in
-  Printexc.record_backtrace true;
-  let backtrace =
-    try
+  match
+    ( getenv_nonempty "GITLAB_TOKEN"
+    , getenv_nonempty "GITLAB_API_BASE"
+    , getenv_nonempty "GITLAB_PROJECT_NAME"
+    , getenv_nonempty "GITLAB_PROJECT_ID" )
+  with
+  | Some _, Some _, Some _, Some project_id
+    when int_of_string_opt project_id |> CCOption.is_none ->
+    Format.eprintf
+      "Skipping GitLab integration test: invalid GITLAB_PROJECT_ID=%S\n%!"
+      project_id;
+    Lwt.return 0
+  | Some token, Some uri_base, Some project_name, Some project_id ->
+    let module Gitlab_notify =
+      Canary.Notifier.Gitlab (struct
+        let token = token
+        let uri_base = uri_base
+        let project_name = project_name
+        let project_id = int_of_string project_id
+      end)
+    in
+    Printexc.record_backtrace true;
+    let backtrace =
       (* Raise and catch a test exception to populate the backtrace *)
-      raise (Failure exn_msg)
-    with
-    | Failure _ -> Printexc.get_backtrace ()
-  in
-  Gitlab_notify.notify
-    ~labels:[ "bug"; "exception" ]
-    ~additional:"some testing additionals"
-    (Failure exn_msg)
-    backtrace
-  |> Lwt.map CCResult.get_or_failwith
+      try raise (Failure exn_msg) with
+      | Failure _ -> Printexc.get_backtrace ()
+    in
+    Gitlab_notify.notify
+      ~labels:[ "bug"; "exception" ]
+      ~additional:"some testing additionals"
+      (Failure exn_msg)
+      backtrace
+    |> Lwt.map CCResult.get_or_failwith
+  | _ ->
+    Format.eprintf
+      "Skipping GitLab integration test: missing GitLab environment variables\n\
+       %!";
+    Lwt.return 0
 ;;
 
 let () =
