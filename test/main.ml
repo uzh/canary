@@ -13,12 +13,10 @@ let load_dotenv () =
       let value = CCString.trim value in
       let value =
         match CCString.chop_prefix ~pre:"\"" value with
-        | Some v ->
-          CCString.chop_suffix ~suf:"\"" v |> CCOption.get_or ~default:v
+        | Some v -> CCString.chop_suffix ~suf:"\"" v |> CCOption.get_or ~default:v
         | None ->
           (match CCString.chop_prefix ~pre:"'" value with
-           | Some v ->
-             CCString.chop_suffix ~suf:"'" v |> CCOption.get_or ~default:v
+           | Some v -> CCString.chop_suffix ~suf:"'" v |> CCOption.get_or ~default:v
            | None -> value)
       in
       Unix.putenv key value)
@@ -68,8 +66,7 @@ let test_issue_create () =
     |> Lwt.map CCResult.get_or_failwith
   | _ ->
     Format.eprintf
-      "Skipping GitLab integration test: missing GitLab environment variables\n\
-       %!";
+      "Skipping GitLab integration test: missing GitLab environment variables\n%!";
     Lwt.return 0
 ;;
 

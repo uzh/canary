@@ -34,8 +34,7 @@ module Notifier = struct
     val printer : string -> unit Lwt.t
   end
 
-  module Textual (Conf : TextualConf) :
-    Notifier_s with type notifier_rv := unit = struct
+  module Textual (Conf : TextualConf) : Notifier_s with type notifier_rv := unit = struct
     let notify ?search_params:_ ?labels:_ ~additional exn trace =
       let text =
         Format.asprintf
@@ -58,8 +57,7 @@ module Notifier = struct
     val project_id : int
   end
 
-  module Gitlab (Conf : GitlabConf) : Notifier_s with type notifier_rv := int =
-  struct
+  module Gitlab (Conf : GitlabConf) : Notifier_s with type notifier_rv := int = struct
     type gitlab_token_api_repr =
       { id : int
       ; name : string
@@ -102,8 +100,7 @@ module Notifier = struct
         |> Cohttp.Header.of_list
       in
       let uri =
-        Uri.of_string (Conf.uri_base ^ resource)
-        |> flip Uri.add_query_params get_params
+        Uri.of_string (Conf.uri_base ^ resource) |> flip Uri.add_query_params get_params
       in
       let%lwt resp, body = meth ~headers uri in
       match resp.Cohttp.Response.status with
@@ -136,22 +133,18 @@ module Notifier = struct
         let search_in, search =
           match title, description with
           | Some title, None -> Some [ "title" ], Some [ title ]
-          | None, Some description ->
-            Some [ "description" ], Some [ description ]
+          | None, Some description -> Some [ "description" ], Some [ description ]
           | Some title, Some description ->
             Some [ "title"; "description" ], Some [ title ^ " " ^ description ]
           | None, None -> None, None
         in
-        let add_opt key value_opt acc =
-          match value_opt with
-          | Some value -> (key, value) :: acc
-          | None -> acc
+        let test =
+          [ CCOption.map (fun iids -> "iids[]", iids) iids
+          ; CCOption.map (fun search -> "search", search) search
+          ; CCOption.map (fun search_in -> "search_in", search_in) search_in
+          ]
         in
-        []
-        |> add_opt "iids[]" iids
-        |> add_opt "search" search
-        |> add_opt "search_in" search_in
-        |> CCList.rev
+        test |> CCList.map CCOption.to_list |> CCList.flatten
       in
       let get_params = get_params @ search_params in
       let* resp = make_get_call ~resource:"/issues" ~get_params () in
@@ -185,9 +178,7 @@ module Notifier = struct
     ;;
 
     let add_labels iid labels =
-      let resource =
-        Format.asprintf "/projects/%d/issues/%d" Conf.project_id iid
-      in
+      let resource = Format.asprintf "/projects/%d/issues/%d" Conf.project_id iid in
       let meth = Cohttp_lwt_unix.Client.put ?body:None ?chunked:None in
       let get_params = [ "add_labels", labels ] in
       if CCList.is_empty labels |> not
@@ -198,25 +189,18 @@ module Notifier = struct
     ;;
 
     let reopen_issue ?(with_labels = []) iid =
-      let resource =
-        Format.asprintf "/projects/%d/issues/%d" Conf.project_id iid
-      in
+      let resource = Format.asprintf "/projects/%d/issues/%d" Conf.project_id iid in
       let meth = Cohttp_lwt_unix.Client.put ?body:None ?chunked:None in
       let get_params =
         [ "state_event", [ "reopen" ] ]
-        @
-        if CCList.is_empty with_labels
-        then []
-        else [ "add_labels", with_labels ]
+        @ if CCList.is_empty with_labels then [] else [ "add_labels", with_labels ]
       in
       let* _resp = make_api_call ~meth ~resource ~get_params () in
       Lwt.return_ok ()
     ;;
 
     let comment_on_issue ~iid body =
-      let resource =
-        Format.asprintf "/projects/%d/issues/%d/notes" Conf.project_id iid
-      in
+      let resource = Format.asprintf "/projects/%d/issues/%d/notes" Conf.project_id iid in
       let* _resp = make_post_call ~post_params:[ "body", body ] ~resource () in
       Lwt.return_ok ()
     ;;
@@ -224,9 +208,7 @@ module Notifier = struct
     let notify ?search_params ?labels ~additional exn trace =
       let title_max_length = 255 in
       let exn = Printexc.to_string exn in
-      let trace_md5 =
-        CCString.sub Digest.(to_hex (string (exn ^ trace))) 0 10
-      in
+      let trace_md5 = CCString.sub Digest.(to_hex (string (exn ^ trace))) 0 10 in
       let description = Format.asprintf "```\n%s\n```" trace in
       let* existing = get_gitlab_issues ?search_params ~title:trace_md5 () in
       let title = trace_md5 ^ " | " ^ exn in
@@ -240,16 +222,11 @@ module Notifier = struct
         | [ issue ] -> Lwt.return_ok issue.iid
         | [] -> create_gitlab_issue ~description title
         | _ ->
-          Lwt.return_error
-            "Multiple gitlab issues match this exception/description set."
+          Lwt.return_error "Multiple gitlab issues match this exception/description set."
       in
       let* () = comment_on_issue ~iid additional in
       let* () = reopen_issue ?with_labels:labels iid in
-      let* () =
-        match labels with
-        | Some labels -> add_labels iid labels
-        | None -> Lwt.return_ok ()
-      in
+      let* () = labels |> CCOption.map_or ~default:(Lwt.return_ok ()) (add_labels iid) in
       Lwt.return_ok iid
     ;;
 
