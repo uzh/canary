@@ -37,7 +37,8 @@
   cohttp
   cohttp-lwt
   cohttp-lwt-unix
-  containers
+  (containers
+   (>= 3.6))
   lwt
   (lwt_ppx
    (>= 2.1.0))

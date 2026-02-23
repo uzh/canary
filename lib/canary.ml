@@ -142,13 +142,16 @@ module Notifier = struct
             Some [ "title"; "description" ], Some [ title ^ " " ^ description ]
           | None, None -> None, None
         in
-        let test =
-          [ CCOption.map (fun iids -> "iids[]", iids) iids
-          ; CCOption.map (fun search -> "search", search) search
-          ; CCOption.map (fun search_in -> "search_in", search_in) search_in
-          ]
+        let add_opt key value_opt acc =
+          match value_opt with
+          | Some value -> (key, value) :: acc
+          | None -> acc
         in
-        test |> CCList.map CCOption.to_list |> CCList.flatten
+        []
+        |> add_opt "iids[]" iids
+        |> add_opt "search" search
+        |> add_opt "search_in" search_in
+        |> CCList.rev
       in
       let get_params = get_params @ search_params in
       let* resp = make_get_call ~resource:"/issues" ~get_params () in
@@ -243,7 +246,9 @@ module Notifier = struct
       let* () = comment_on_issue ~iid additional in
       let* () = reopen_issue ?with_labels:labels iid in
       let* () =
-        labels |> CCOption.map_or ~default:(Lwt.return_ok ()) (add_labels iid)
+        match labels with
+        | Some labels -> add_labels iid labels
+        | None -> Lwt.return_ok ()
       in
       Lwt.return_ok iid
     ;;
