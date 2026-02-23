@@ -25,7 +25,8 @@ depends: [
   "lwt_ppx" {>= "2.1.0"}
   "ocamlformat" {with-dev-setup}
   "ocaml-lsp-server" {with-dev-setup}
-  "ppx_deriving_yojson"
+  "ppx_deriving" {>= "5.0"}
+  "ppx_deriving_yojson" {>= "3.5.3"}
   "ptime"
   "ssl" {>= "0.7.0" & with-test}
   "lwt_ssl" {>= "1.2.0" & with-test}

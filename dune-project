@@ -44,7 +44,10 @@
    (>= 2.1.0))
   (ocamlformat :with-dev-setup)
   (ocaml-lsp-server :with-dev-setup)
-  ppx_deriving_yojson
+  (ppx_deriving
+   (>= 5.0))
+  (ppx_deriving_yojson
+   (>= 3.5.3))
   ptime
   (ssl
    (and
